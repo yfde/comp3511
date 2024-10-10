@@ -127,23 +127,7 @@ void process_cmd(char *command_line)
     // Uncomment this line to check the cmdline content
     // Please remember to remove this line before the submission
     // printf("Debug: The command line is [%s]\n", command_line);
-    // int pfds[2]; 
-    // pipe(pfds); 
-    // pid_t pid = fork(); /* 0 (child), non-zero (parent) */ 
-    // if ( pid == 0 ) { /* The child process*/ 
-    //     close(1); /* close stdout */ 
-    //     dup2(pfds[1],1); /* make stdout as pipe input */ 
-    //     close(pfds[0]); /* don't need this */ 
-    //     execlp("ls", "ls", NULL); 
-    // } else { /* The parent process*/ 
-    //     wait(0); /* wait for the child process */
-    //     close(0); /* close stdin */ 
-    //     dup2(pfds[0],0); /* make stdin as pipe output */ 
-    //     close(pfds[1]); /* don't need this */
-        
-    //     execlp("wc", "wc", "-l", NULL); 
-    // } 
-    // start by parsing the command line
+
     char *pipe_segments[MAX_PIPE_SEGMENTS];
     int num_pipe_segments;
     read_tokens(pipe_segments, command_line, &num_pipe_segments, PIPE_CHAR);
@@ -151,94 +135,86 @@ void process_cmd(char *command_line)
     // execute the pipe segments in order
     for (int i = 0; i < num_pipe_segments; i++)
     {
-        // print the index and the content of the current pipe segment
-        // printf("Debug: Pipe segment %d: [%s]\n", i, pipe_segments[i]);
-
-        // parse the arguments for the current pipe segment
-        char *arguments[MAX_ARGUMENTS_PER_SEGMENT];
-        // null initialize the arguments array
-        for (int j = 0; j < MAX_ARGUMENTS_PER_SEGMENT; j++)
-        {
-            arguments[j] = NULL;
-        }
-        int num_arguments;
-        read_tokens(arguments, pipe_segments[i], &num_arguments, SPACE_CHARS);
-
-        // if (num_arguments >= MAX_ARGUMENTS_PER_SEGMENT)
-        // {
-        //     arguments[MAX_ARGUMENTS_PER_SEGMENT - 1] = NULL;
-        // }
-
         if (i != num_pipe_segments - 1)
         {
-            // open pipe
+            // don't contain redirction
+            char *arguments[MAX_ARGUMENTS_PER_SEGMENT];
+            for (int j = 0; j < MAX_ARGUMENTS_PER_SEGMENT; j++){arguments[j] = NULL;}
+            int num_arguments;
+            read_tokens(arguments, pipe_segments[i], &num_arguments, SPACE_CHARS);
+
             int pipefd[2];
             pipe(pipefd);
 
-            // create a child process to execute the current pipe segment
             pid_t pid = fork();
             if (pid == 0)
             {
-                // the child process executes the command
-                // if (i != num_pipe_segments - 1)
-                // {
-                // close the read end of the pipe
-                close(1);
-                // redirect the stdout to the write end of the pipe
-                dup2(pipefd[1], 1);
-                // close the write end of the pipe
+                close(STDOUT_FILENO);
+                dup2(pipefd[1], STDOUT_FILENO);
                 close(pipefd[0]);
-                // }
-                // execute the command
                 execvp(arguments[0], arguments);
-                // if execvp returns, it must have failed
-                // print an error message and exit
                 perror("execvp");
                 exit(1);
             }
             else
             {
-                // the parent process waits for the child to finish
                 wait(0);
-                // if (i != num_pipe_segments - 1)
-                // {
-                // close the write end of the pipe
-                close(0);
-                // redirect the stdin to the read end of the pipe
-                dup2(pipefd[0], 0);
-                // close the read end of the pipe
+                close(STDIN_FILENO);
+                dup2(pipefd[0], STDIN_FILENO);
                 close(pipefd[1]);
-                // }
+            }
+        }
+        else
+        {
+            // may contain redirction
+            char *re_input_segments[2];
+            int num_re_input_segments;
+            read_tokens(re_input_segments, pipe_segments[i], &num_re_input_segments, "<");
+            char *re_output_segments[2];
+            int num_re_output_segments;
+            read_tokens(re_output_segments, re_input_segments[0], &num_re_output_segments, ">");
+            if (num_re_input_segments == 2 && num_re_output_segments == 1){read_tokens(re_output_segments, re_input_segments[1], &num_re_output_segments, ">");}
+            
+            // printf("num_re_input_segments: %d\n", num_re_input_segments);
+            // printf("num_re_output_segments: %d\n", num_re_output_segments);
+
+            if (num_re_input_segments == 2)
+            {
+                // input redirection
+                char *re_input_file[2];
+                int num_re_input_file;
+                read_tokens(re_input_file, re_input_segments[1], &num_re_input_file, SPACE_CHARS);
+                int fd = open(re_input_file[0], O_RDONLY);
+                if (fd == -1)
+                {
+                    perror("open");
+                    exit(1);
+                }
+                close(STDIN_FILENO);
+                dup2(fd, STDIN_FILENO);
+                close(fd);
+            }
+            if (num_re_output_segments == 2)
+            {
+                // output redirection
+                char *re_output_file[2];
+                int num_re_output_file;
+                read_tokens(re_output_file, re_output_segments[1], &num_re_output_file, SPACE_CHARS);
+                int fd = open(re_output_file[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (fd == -1)
+                {
+                    perror("open");
+                    exit(1);
+                }
+                close(STDOUT_FILENO);
+                dup2(fd, STDOUT_FILENO);
+                close(fd);
             }
 
-
-
-            // num_arguments = num_arguments >= MAX_ARGUMENTS_PER_SEGMENT ? MAX_ARGUMENTS_PER_SEGMENT-1 : num_arguments;
-            // arguments[num_arguments] = NULL;
-
-            // print the arguments for the current pipe segment
-            // for (int j = 0; j < MAX_ARGUMENTS_PER_SEGMENT; j++)
-            // {
-            //     printf("Debug: Argument %d: [%s]\n", j, arguments[j]);
-            // }
-
-            // create a child process to execute the current pipe segment
-            // pid_t pid = fork();
-            // if (pid == 0)
-            // {
-            //     // the child process executes the command
-            //     execvp(arguments[0], arguments);
-            //     // if execvp returns, it must have failed
-            //     // print an error message and exit
-            //     perror("execvp");
-            //     exit(1);
-            // }
-            // else
-            // {
-            //     // the parent process waits for the child to finish
-            //     wait(0);
-            // }
-        }else{
+            char *arguments[MAX_ARGUMENTS_PER_SEGMENT];
+            for (int j = 0; j < MAX_ARGUMENTS_PER_SEGMENT; j++){arguments[j] = NULL;}
+            int num_arguments;
+            read_tokens(arguments, pipe_segments[i], &num_arguments, SPACE_CHARS);
             execvp(arguments[0], arguments);
         }
     }
