@@ -184,7 +184,7 @@ void process_cmd(char *command_line)
                 char *re_input_file[2];
                 int num_re_input_file;
                 read_tokens(re_input_file, re_input_segments[1], &num_re_input_file, SPACE_CHARS);
-                int fd = open(re_input_file[0], O_RDONLY);
+                int fd = open(re_input_file[0], O_RDONLY, S_IRUSR | S_IWUSR);
                 if (fd == -1)
                 {
                     perror("open");
@@ -200,7 +200,7 @@ void process_cmd(char *command_line)
                 char *re_output_file[2];
                 int num_re_output_file;
                 read_tokens(re_output_file, re_output_segments[1], &num_re_output_file, SPACE_CHARS);
-                int fd = open(re_output_file[0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                int fd = open(re_output_file[0], O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
                 if (fd == -1)
                 {
                     perror("open");
