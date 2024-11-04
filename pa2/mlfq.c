@@ -2,8 +2,8 @@
     COMP3511 Fall 2024
     PA2: Multi-level Feedback Queue 
     
-    Your name:
-    Your ITSC email:           @connect.ust.hk
+    Your name: Yufan Deng
+    Your ITSC email: ydengbd@connect.ust.hk
 
     Declaration:
 
@@ -217,8 +217,121 @@ void mlfq() {
     // TODO: Write your code here to implement MLFQ
     // Tips: A simple array is good enough to implement a queue
 
-  
-    
+    // create queue_num queues
+    struct Process *queues[MAX_NUM_QUEUE][MAX_NUM_PROCESS];
+    int front[MAX_NUM_QUEUE] = {0};
+    int rear[MAX_NUM_QUEUE] = {0};
+    int size[MAX_NUM_QUEUE] = {0};
+
+    // initialize queues
+    // for (int i = 0; i < queue_num; i++) {
+    //     for (int j = 0; j < MAX_NUM_PROCESS; j++) {
+    //         queues[i][j] = NULL;
+    //     }
+    // }
+
+    // initialize process remain time
+    for (int i = 0; i < process_table_size; i++) {
+        process_table[i].remain_time = process_table[i].burst_time;
+    }
+
+    // initialize time
+    int time = 0;
+    char prev_process[MAX_PROCESS_NAME] = "";
+    int prev_quantum = 0;
+    int prev_queue = 0;
+
+    // loop until all processes are done
+    while (1) {
+        // check if all processes are done
+        int done = 1;
+        for (int i = 0; i < process_table_size; i++) {
+            if (process_table[i].remain_time > 0) {
+                done = 0;
+                break;
+            }
+        }
+        if (done) {
+            break;
+        }
+
+        // add processes to the queues
+        for (int i = 0; i < process_table_size; i++) {
+            if (process_table[i].arrival_time == time) {
+                queues[0][rear[0]] = &process_table[i];
+                rear[0] = (rear[0] + 1) % MAX_NUM_PROCESS;
+                size[0]++;
+            }
+        }
+
+        // loop through the queues
+        for (int i = 0; i < queue_num; i++) {
+            // check if the queue is empty
+            if (size[i] == 0) {
+                continue;
+            }
+
+            // check if this is the first process
+            if (strcmp(prev_process, "") == 0) {
+                // switch process
+                sz_chart++;
+                strcpy(chart[sz_chart-1].name, queues[i][front[i]]->name);
+                chart[sz_chart-1].duration = 1;
+                queues[i][front[i]]->remain_time--;
+                // log prev
+                strcpy(prev_process, queues[i][front[i]]->name);
+                prev_queue = i;
+                prev_quantum = time_quantum[i] - 1;
+                break;
+            }
+
+            // check if current process is the same as the previous one
+            if (strcmp(prev_process, queues[i][front[i]]->name) != 0) {
+                // switch process
+                sz_chart++;
+                strcpy(chart[sz_chart-1].name, queues[i][front[i]]->name);
+                chart[sz_chart-1].duration = 1;
+                queues[i][front[i]]->remain_time--;
+                // log prev
+                strcpy(prev_process, queues[i][front[i]]->name);
+                prev_queue = i;
+                prev_quantum = time_quantum[i] - 1;
+                break;
+            } else {
+                chart[sz_chart-1].duration++;
+                queues[i][front[i]]->remain_time--;
+                prev_quantum--;
+                break;
+            }
+        }
+
+        // check if the current process has finished
+        if (queues[prev_queue][front[prev_queue]]->remain_time == 0) {
+            // move the front pointer
+            front[prev_queue] = (front[prev_queue] + 1) % MAX_NUM_PROCESS;
+            size[prev_queue]--; // size[] is useless
+        } else if (prev_quantum == 0) {
+            // move the process to the next queue
+            queues[prev_queue + 1][rear[prev_queue + 1]] = queues[prev_queue][front[prev_queue]];
+            rear[prev_queue + 1] = (rear[prev_queue + 1] + 1) % MAX_NUM_PROCESS;
+            size[prev_queue + 1]++;
+            // move the front pointer
+            front[prev_queue] = (front[prev_queue] + 1) % MAX_NUM_PROCESS;
+            size[prev_queue]--;
+        }
+        // printf("FFFFFFFFFFF\n");
+        // //print prev_queue
+        // printf("prev_queue: %d\n", prev_queue);
+        // //print prev_process
+        // printf("prev_process: %s\n", prev_process);
+        // //print prev_quantum
+        // printf("prev_quantum: %d\n", prev_quantum);
+        // //print time
+        // printf("time: %d\n", time);  //time is useless
+
+        // increment time
+        time++;
+    }
     // At the end, display the final Gantt chart
     gantt_chart_print(chart, sz_chart);
 
