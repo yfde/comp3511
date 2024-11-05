@@ -238,7 +238,7 @@ void mlfq() {
     // initialize time
     int time = 0;
     char prev_process[MAX_PROCESS_NAME] = "";
-    int prev_quantum = 0;
+    int prev_time[MAX_NUM_QUEUE] = {0};
     int prev_queue = 0;
 
     // loop until all processes are done
@@ -281,7 +281,7 @@ void mlfq() {
                 // log prev
                 strcpy(prev_process, queues[i][front[i]]->name);
                 prev_queue = i;
-                prev_quantum = time_quantum[i] - 1;
+                prev_time[i] = time_quantum[i] - 1;
                 break;
             }
 
@@ -295,12 +295,18 @@ void mlfq() {
                 // log prev
                 strcpy(prev_process, queues[i][front[i]]->name);
                 prev_queue = i;
-                prev_quantum = time_quantum[i] - 1;
+                if (prev_time[i] == 0) {prev_time[i] = time_quantum[i] - 1;}
+                else {prev_time[i]--;}
                 break;
             } else {
                 chart[sz_chart-1].duration++;
                 queues[i][front[i]]->remain_time--;
-                prev_quantum--;
+                if (prev_queue != i) {
+                    prev_queue = i;
+                    prev_time[i] = time_quantum[i] - 1;
+                } else {
+                    prev_time[i]--;
+                }
                 break;
             }
         }
@@ -309,8 +315,9 @@ void mlfq() {
         if (queues[prev_queue][front[prev_queue]]->remain_time == 0) {
             // move the front pointer
             front[prev_queue] = (front[prev_queue] + 1) % MAX_NUM_PROCESS;
-            size[prev_queue]--; // size[] is useless
-        } else if (prev_quantum == 0) {
+            size[prev_queue]--;
+            prev_time[prev_queue] = 0;
+        } else if (prev_time[prev_queue] == 0) {
             // move the process to the next queue
             queues[prev_queue + 1][rear[prev_queue + 1]] = queues[prev_queue][front[prev_queue]];
             rear[prev_queue + 1] = (rear[prev_queue + 1] + 1) % MAX_NUM_PROCESS;
@@ -318,16 +325,23 @@ void mlfq() {
             // move the front pointer
             front[prev_queue] = (front[prev_queue] + 1) % MAX_NUM_PROCESS;
             size[prev_queue]--;
+            prev_time[prev_queue] = 0;
         }
+
         // printf("FFFFFFFFFFF\n");
         // //print prev_queue
         // printf("prev_queue: %d\n", prev_queue);
-        // //print prev_process
+        // //print size of all queue
+        // printf("size: ");
+        // for (int i = 0; i < queue_num; i++) {
+        //     printf(" %d ", size[i]);
+        // }
+        // printf("\n");
         // printf("prev_process: %s\n", prev_process);
-        // //print prev_quantum
-        // printf("prev_quantum: %d\n", prev_quantum);
-        // //print time
-        // printf("time: %d\n", time);  //time is useless
+        // //print prev_time
+        // printf("prev_time: %d\n", prev_time[prev_queue]);
+        // // print time
+        // printf("time: %d\n", time);
 
         // increment time
         time++;
