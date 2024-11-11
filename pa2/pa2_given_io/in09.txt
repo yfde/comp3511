@@ -1,0 +1,22 @@
+# An input file for a Simplified Multi-level Feedback Queue (MLFQ)
+# Empty lines and lines starting with '#' are ignored
+
+# Note: for FCFS, a big number (e.g., 1000) is chosen 
+queue_num = 4
+time_quantum = 2 7 13 1000
+
+
+# The process table definition
+# We assume the processes are sorted by the arrival time
+process_table_size = 10
+process_table = 
+PPP1 0 8
+PPP2 1 18
+PPP3 18 28
+PPP4 19 28
+PPP5 20 28
+PPP6 21 28
+PPP7 32 28
+PPP8 35 28
+PPP9 70 28
+PPP10 71 28
